@@ -1,11 +1,34 @@
 #include "ft_ping.h"
 
+void send_ping(int sockfd, struct addrinfo* addrs)
+{
+	struct icmp* icmp;
+	char msg[64];
+	int* ts;
+	struct sockaddr_in* addr;
+	char ipstr[INET_ADDRSTRLEN];
+
+	memset(msg, 0, 64);
+	icmp = (struct icmp*)msg;
+	icmp->icmp_type = ICMP_ECHO;
+	icmp->icmp_code = 0;
+	icmp->icmp_cksum = 0;
+	icmp->icmp_id = 123;
+	icmp->icmp_seq = 10;
+	ts = (int*)icmp->icmp_data;
+	*ts = 1708102699;
+	addr = (struct sockaddr_in*)addrs->ai_addr;
+	memset(ipstr, 0, INET_ADDRSTRLEN);
+	inet_ntop(addrs->ai_family, (void const*)(&addr->sin_addr), ipstr, INET_ADDRSTRLEN);
+	printf("ft_ping: sending ICMP message to %s\n", ipstr);
+	sendto(sockfd, (void const*)msg, 64, 0, (struct sockaddr const*)addr, sizeof(struct sockaddr_storage));
+}
+
 int main(int argc, char** argv)
 {
 	struct addrinfo hints;
 	struct addrinfo* addrs;
-	struct sockaddr_in* addr;
-	char ipstr[INET_ADDRSTRLEN];
+	int sockfd;
 
 	if (argc < 2)
 	{
@@ -20,18 +43,14 @@ int main(int argc, char** argv)
 		printf("ft_ping: unknown host\n");
 		return 1;
 	}
-	for (struct addrinfo* p = addrs; p; p = p->ai_next)
-	{
-		addr = (struct sockaddr_in*)p->ai_addr;
-		inet_ntop(p->ai_family, (void const*)(&addr->sin_addr), ipstr, INET_ADDRSTRLEN);
-		printf("%s\n", ipstr);
-	}
-	freeaddrinfo(addrs);
-	/*
-	int sockfd;
-
 	sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &optvalue, sizeof(optvalue)))
-	*/
+	if (sockfd == -1)
+	{
+		freeaddrinfo(addrs);
+		printf("ft_ping: unable to create socket\n");
+		return 1;
+	}
+	send_ping(sockfd, addrs);
+	freeaddrinfo(addrs);
 	return 0;
 }
