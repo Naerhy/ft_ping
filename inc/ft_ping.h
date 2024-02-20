@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
+#include <unistd.h>
+
+#define ICMP_MSG_SIZE 64
 
 #endif
