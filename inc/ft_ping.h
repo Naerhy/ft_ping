@@ -20,6 +20,8 @@ typedef struct Info
 {
 	int sockfd;
 	struct addrinfo* addrs;
+	struct sockaddr_in* addr;
+	char ipstr[INET_ADDRSTRLEN];
 	pid_t pid;
 	uint32_t seq;
 	int close;
