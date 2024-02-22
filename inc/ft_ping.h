@@ -23,11 +23,16 @@ typedef struct Info
 	struct sockaddr_in* addr;
 	char ipstr[INET_ADDRSTRLEN];
 	pid_t pid;
-	uint32_t seq;
 	int close;
 	uint32_t pcktsent;
 	uint32_t pcktrecv;
 } Info;
+
+typedef struct Timestamp
+{
+	uint64_t whole;
+	uint64_t fractional;
+} Timestamp;
 
 extern Info* info;
 
