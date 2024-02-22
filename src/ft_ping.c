@@ -14,6 +14,7 @@ static uint16_t generate_checksum(uint16_t* x)
 	return ~cksum;
 }
 
+// TODO: decide what to do in case of error
 static void sendping(void)
 {
 	struct icmp* icmp;
@@ -31,9 +32,10 @@ static void sendping(void)
 	icmp->icmp_seq = info->seq;
 	*((time_t*)icmp->icmp_data) = tv.tv_sec;
 	icmp->icmp_cksum = generate_checksum((uint16_t*)icmp);
-	if (sendto(info->sockfd, msg, ICMP_MSG_SIZE, 0, (struct sockaddr const*)info->addr,
+	if (sendto(info->sockfd, msg, ICMP_MSG_SIZE, 0, (struct sockaddr*)info->addr,
 			sizeof(struct sockaddr_storage)) == -1)
 		return ;
+	info->pcktsent++;
 }
 
 static void recvping(void)
@@ -49,6 +51,7 @@ static void recvping(void)
 		if (recvfrom(info->sockfd, buf, sizeof(buf), MSG_DONTWAIT, (struct sockaddr*)&recvaddr, &recvaddrlen) != -1)
 		{
 			printf("received message\n");
+			info->pcktrecv++;
 		}
 	}
 }
@@ -71,17 +74,34 @@ static int init_info(void)
 	info = malloc(sizeof(Info));
 	if (!info)
 		return 0;
+	info->sockfd = -1;
 	memset(info->ipstr, 0, sizeof(info->ipstr));
 	info->pid = getpid();
 	info->seq = 0;
 	info->close = 0;
+	info->pcktsent = 0;
+	info->pcktrecv = 0;
 	return 1;
 }
 
 static void exit_free(void)
 {
+	if (info->sockfd != -1)
+		close(info->sockfd);
 	freeaddrinfo(info->addrs);
 	free(info);
+}
+
+static void print_stats(char const* hostname)
+{
+	uint32_t pcktloss;
+
+	pcktloss = 100 - (((double)info->pcktrecv / (double)info->pcktsent) * 100);
+	printf("--- %s ping statistics ---\n", hostname);
+	printf("%u packets transmitted, %u packets received, %u%% packet loss\n", info->pcktsent,
+			info->pcktrecv, pcktloss);
+	// TODO: calculate those numbers
+	printf("round-trip min/avg/max/stddev = ...\n");
 }
 
 int main(int argc, char** argv)
@@ -122,6 +142,7 @@ int main(int argc, char** argv)
 	// invert raise and recvping to avoid missing first recv?
 	raise(SIGALRM);
 	recvping();
+	print_stats(*(argv + 1));
 	exit_free();
 	return 0;
 }

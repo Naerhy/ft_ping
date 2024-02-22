@@ -25,6 +25,8 @@ typedef struct Info
 	pid_t pid;
 	uint32_t seq;
 	int close;
+	uint32_t pcktsent;
+	uint32_t pcktrecv;
 } Info;
 
 extern Info* info;
