@@ -22,10 +22,11 @@
 typedef struct Info
 {
 	int sockfd;
+	uint8_t ttl;
 	struct addrinfo* addrs;
 	struct sockaddr_in* addr;
 	char ipstr[INET_ADDRSTRLEN];
-	pid_t pid;
+	uint16_t pid;
 	int close;
 	uint32_t pcktsent;
 	uint32_t pcktrecv;

@@ -61,9 +61,13 @@ void recvping(void)
 					printf("%u bytes from %s: icmp_seq=%u ttl=%u time=%lu,%lu ms\n", icmplen,
 							info->ipstr, icmp->icmp_seq, ip->ip_ttl, ts.whole, ts.fractional);
 					break;
-				default:
-					printf("invalid ICMP code\n");
+				/*
+				case ICMP_TIME_EXCEEDED:
+					printf("%u bytes from %s (%s): %s\n", icmplen, "test", "test", "Time exceeded");
 					break;
+				*/
+				default:
+					continue;
 			}
 			info->pcktrecv++;
 		}

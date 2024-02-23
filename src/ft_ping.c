@@ -24,12 +24,19 @@ static void handle_signals(int signum)
 		info->close = 1;
 }
 
-static void exit_free(void)
+static int exit_ping(char const* err)
 {
-	if (info->sockfd != -1)
-		close(info->sockfd);
-	freeaddrinfo(info->addrs);
-	free(info);
+	if (err)
+		write(1, err, strlen(err));
+	if (info)
+	{
+		if (info->sockfd != -1)
+			close(info->sockfd);
+		if (info->addrs)
+			freeaddrinfo(info->addrs);
+		free(info);
+	}
+	return err ? 1 : 0;
 }
 
 static int init_info(void)
@@ -38,6 +45,8 @@ static int init_info(void)
 	if (!info)
 		return 0;
 	info->sockfd = -1;
+	info->ttl = 64;
+	info->addrs = NULL;
 	memset(info->ipstr, 0, sizeof(info->ipstr));
 	info->pid = getpid();
 	info->close = 0;
@@ -51,31 +60,20 @@ int main(int argc, char** argv)
 	struct addrinfo hints;
 
 	if (argc < 2)
-	{
-		printf("ft_ping: missing host operand\n");
-		return 1;
-	}
+		return exit_ping("ft_ping: missing host operand\n");
 	if (!init_info())
-	{
-		printf("ft_ping: unable to allocate memory\n");
-		return 1;
-	}
+		return exit_ping("ft_ping: unable to allocate memory\n");
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_RAW;
 	if (getaddrinfo(*(argv + 1), NULL, &hints, &info->addrs))
-	{
-		printf("ft_ping: unknown host\n");
-		exit_free();
-		return 1;
-	}
+		return exit_ping("ft_ping: unknown host\n");
 	info->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (info->sockfd == -1)
-	{
-		printf("ft_ping: unable to create socket\n");
-		exit_free();
-		return 1;
-	}
+		return exit_ping("ft_ping: unable to create socket\n");
+	// TODO: handle ttl flag in argv + validate max value
+	if (setsockopt(info->sockfd, IPPROTO_IP, IP_TTL, &info->ttl, sizeof(info->ttl)) == -1)
+		return exit_ping("ft_ping: unable to set socket option\n");
 	info->addr = (struct sockaddr_in*)info->addrs->ai_addr;
 	inet_ntop(info->addrs->ai_family, &info->addr->sin_addr, info->ipstr, sizeof(info->ipstr));
 	printf("PING %s (%s): 56 data bytes\n", *(argv + 1), info->ipstr);
@@ -85,6 +83,5 @@ int main(int argc, char** argv)
 	raise(SIGALRM);
 	recvping();
 	print_stats(*(argv + 1));
-	exit_free();
-	return 0;
+	return exit_ping(NULL);
 }
