@@ -2,6 +2,7 @@
 #define FT_PING_H
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>
@@ -14,7 +15,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define IP_HEADER_MIN_SIZE 20
 #define ICMP_MSG_SIZE 64
+#define ICMP_MIN_SIZE 16
 
 typedef struct Info
 {
@@ -35,5 +38,12 @@ typedef struct Timestamp
 } Timestamp;
 
 extern Info* info;
+
+void sendping(void);
+
+void recvping(void);
+
+void print_reply(void);
+void print_stats(char const* hostname);
 
 #endif

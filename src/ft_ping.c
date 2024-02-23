@@ -2,11 +2,7 @@
 
 Info* info = NULL;
 
-static uint16_t sw16(uint16_t v)
-{
-	return (v << 8) | (v >> 8);
-}
-
+// TODO: check if useful to keep this function
 /*
 static uint32_t sw32(uint32_t v)
 {
@@ -17,90 +13,6 @@ static uint32_t sw32(uint32_t v)
 }
 */
 
-static double timestamp_diff(struct timeval* before)
-{
-	struct timeval now;
-	double ms;
-
-	// TODO: handle error
-	gettimeofday(&now, NULL);
-	ms = (((double)now.tv_sec * 1000) + ((double)now.tv_usec / 1000)) -
-			(((double)before->tv_sec * 1000) + ((double)before->tv_usec / 1000));
-	return ms;
-}
-
-static uint16_t generate_checksum(uint16_t* x)
-{
-	int cksum;
-
-	cksum = 0;
-	for (size_t i = 0; i < ICMP_MSG_SIZE / 2; i++)
-		cksum += x[i];
-	cksum = (cksum >> 16) + (cksum & 0xffff);
-	cksum += (cksum >> 16);
-	return ~cksum;
-}
-
-// TODO: decide what to do in case of error
-// TODO: add info->close condition to prevent sending a last ping on exit?
-static void sendping(void)
-{
-	struct icmp* icmp;
-	char msg[ICMP_MSG_SIZE];
-	struct timeval tv;
-
-	if (gettimeofday(&tv, NULL) == -1)
-		return ;
-	memset(msg, 0, ICMP_MSG_SIZE);
-	icmp = (struct icmp*)msg;
-	icmp->icmp_type = ICMP_ECHO;
-	icmp->icmp_code = 0;
-	icmp->icmp_cksum = 0;
-	icmp->icmp_id = info->pid;
-	icmp->icmp_seq = info->pcktsent;
-	memcpy(icmp->icmp_data, &tv, sizeof(tv));
-	icmp->icmp_cksum = generate_checksum((uint16_t*)icmp);
-	if (sendto(info->sockfd, msg, ICMP_MSG_SIZE, 0, (struct sockaddr*)info->addr,
-			sizeof(struct sockaddr_storage)) == -1)
-		return ;
-	info->pcktsent++;
-}
-
-static Timestamp convert_ts(double ms)
-{
-	Timestamp ts;
-
-	ts.whole = (uint64_t)ms;
-	ts.fractional = (uint64_t)((ms - ts.whole) * 1000);
-	return ts;
-}
-
-static void recvping(void)
-{
-	char buf[200];
-	struct sockaddr_in recvaddr;
-	socklen_t recvaddrlen;
-	struct ip* ip;
-	struct icmp* icmp;
-	Timestamp ts;
-
-	while (!info->close)
-	{
-		recvaddrlen = sizeof(recvaddr);
-		memset(buf, 0, sizeof(buf));
-		if (recvfrom(info->sockfd, buf, sizeof(buf), MSG_DONTWAIT, (struct sockaddr*)&recvaddr, &recvaddrlen) != -1)
-		{
-			// TODO: validate buffer length?
-			ip = (struct ip*)buf;
-			icmp = (struct icmp*)(buf + ip->ip_hl * 4);
-			ts = convert_ts(timestamp_diff((struct timeval*)icmp->icmp_data));
-			printf("%u bytes from %s: icmp_seq=%u ttl=%u time=%lu,%lu ms\n", sw16(ip->ip_len) - ip->ip_hl * 4,
-					info->ipstr, icmp->icmp_seq, ip->ip_ttl, ts.whole, ts.fractional);
-			info->pcktrecv++;
-		}
-	}
-}
-
 static void handle_signals(int signum)
 {
 	if (signum == SIGALRM)
@@ -108,10 +20,16 @@ static void handle_signals(int signum)
 		sendping();
 		alarm(1);
 	}
-	else if (signum == SIGINT)
-	{
+	else
 		info->close = 1;
-	}
+}
+
+static void exit_free(void)
+{
+	if (info->sockfd != -1)
+		close(info->sockfd);
+	freeaddrinfo(info->addrs);
+	free(info);
 }
 
 static int init_info(void)
@@ -126,26 +44,6 @@ static int init_info(void)
 	info->pcktsent = 0;
 	info->pcktrecv = 0;
 	return 1;
-}
-
-static void exit_free(void)
-{
-	if (info->sockfd != -1)
-		close(info->sockfd);
-	freeaddrinfo(info->addrs);
-	free(info);
-}
-
-static void print_stats(char const* hostname)
-{
-	uint32_t pcktloss;
-
-	pcktloss = 100 - (((double)info->pcktrecv / (double)info->pcktsent) * 100);
-	printf("--- %s ping statistics ---\n", hostname);
-	printf("%u packets transmitted, %u packets received, %u%% packet loss\n", info->pcktsent,
-			info->pcktrecv, pcktloss);
-	// TODO: calculate those numbers
-	printf("round-trip min/avg/max/stddev = ...\n");
 }
 
 int main(int argc, char** argv)
