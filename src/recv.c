@@ -5,25 +5,12 @@ static uint16_t sw16(uint16_t v)
 	return (v << 8) | (v >> 8);
 }
 
-static double timestamp_diff(struct timeval* before)
+static int valid_type(uint8_t type)
 {
-	struct timeval now;
-	double ms;
-
-	// TODO: handle error
-	gettimeofday(&now, NULL);
-	ms = (((double)now.tv_sec * 1000) + ((double)now.tv_usec / 1000)) -
-			(((double)before->tv_sec * 1000) + ((double)before->tv_usec / 1000));
-	return ms;
-}
-
-static Timestamp convert_ts(double ms)
-{
-	Timestamp ts;
-
-	ts.whole = (uint64_t)ms;
-	ts.fractional = (uint64_t)((ms - ts.whole) * 1000);
-	return ts;
+	if (type == ICMP_DEST_UNREACH || type == ICMP_SOURCE_QUENCH || type == ICMP_REDIRECT
+			|| type == ICMP_TIME_EXCEEDED || type == ICMP_PARAMETERPROB)
+		return 1;
+	return 0;
 }
 
 void recvping(void)
@@ -34,7 +21,6 @@ void recvping(void)
 	ssize_t nbrecv;
 	struct ip* ip;
 	struct icmp* icmp;
-	Timestamp ts;
 	uint16_t icmplen;
 
 	while (!info->close)
@@ -52,30 +38,26 @@ void recvping(void)
 			if (icmplen < ICMP_MIN_SIZE)
 				continue;
 			icmp = (struct icmp*)(buf + ip->ip_hl * 4);
-			if (icmp->icmp_id != info->pid)
-				continue;
-			switch (icmp->icmp_type)
+			if (icmp->icmp_type == ICMP_ECHOREPLY)
 			{
-				case ICMP_ECHOREPLY:
-					ts = convert_ts(timestamp_diff((struct timeval*)icmp->icmp_data));
-					printf("%u bytes from %s: icmp_seq=%u ttl=%u time=%lu,%lu ms\n", icmplen,
-							info->ipstr, icmp->icmp_seq, ip->ip_ttl, ts.whole, ts.fractional);
-					break;
-				/*
-				case ICMP_TIME_EXCEEDED:
-					printf("%u bytes from %s (%s): %s\n", icmplen, "test", "test", "Time exceeded");
-					break;
-				*/
-				default:
-					continue;
+				if (icmp->icmp_id == info->pid)
+				{
+					print_icmp_reply(ip, icmp, icmplen);
+					info->pcktrecv++;
+				}
 			}
-			info->pcktrecv++;
+			else if (valid_type(icmp->icmp_type))
+			{
+				if (*((uint16_t*)((uint8_t*)icmp + 8 + (ip->ip_hl * 4) + 4)) == info->pid)
+					print_icmp_error(ip, icmp, icmplen);
+			}
+			else
+				continue;
 		}
 		else
 		{
-			// TODO: handle error
 			if (errno != EAGAIN || errno != EWOULDBLOCK)
-				return ;
+				info->close = -1;
 		}
 	}
 }

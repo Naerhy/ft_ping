@@ -44,7 +44,8 @@ void sendping(void);
 
 void recvping(void);
 
-void print_reply(void);
+void print_icmp_reply(struct ip* ip, struct icmp* icmp, uint16_t icmplen);
+void print_icmp_error(struct ip* ip, struct icmp* icmp, uint16_t icmplen);
 void print_stats(char const* hostname);
 
 #endif

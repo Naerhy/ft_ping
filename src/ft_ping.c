@@ -93,6 +93,8 @@ int main(int argc, char** argv)
 	signal(SIGINT, handle_signals);
 	raise(SIGALRM);
 	recvping();
+	if (info->close == -1)
+		return exit_ping("ft_ping: cannot send or recv ICMP message\n");
 	print_stats(argv[1]);
 	return exit_ping(NULL);
 }
