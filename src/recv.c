@@ -5,7 +5,7 @@ static uint16_t sw16(uint16_t v)
 	return (v << 8) | (v >> 8);
 }
 
-static int valid_type(uint8_t type)
+static int valid_icmp_type(uint8_t type)
 {
 	if (type == ICMP_DEST_UNREACH || type == ICMP_SOURCE_QUENCH || type == ICMP_REDIRECT
 			|| type == ICMP_TIME_EXCEEDED || type == ICMP_PARAMETERPROB)
@@ -22,6 +22,8 @@ void recvping(void)
 	struct ip* ip;
 	struct icmp* icmp;
 	uint16_t icmplen;
+	double ts_diff;
+	double* new_list;
 
 	while (!info->close)
 	{
@@ -42,11 +44,36 @@ void recvping(void)
 			{
 				if (icmp->icmp_id == info->pid)
 				{
-					print_icmp_reply(ip, icmp, icmplen);
+					ts_diff = timestamp_diff((struct timeval*)icmp->icmp_data);
+					if (!info->pcktrecv)
+					{
+						info->min_ts = ts_diff;
+						info->max_ts = ts_diff;
+						info->avg_ts = ts_diff;
+					}
+					else
+					{
+						if (ts_diff < info->min_ts)
+							info->min_ts = ts_diff;
+						if (ts_diff > info->max_ts)
+							info->max_ts = ts_diff;
+						info->avg_ts = (info->avg_ts + ts_diff) / 2;
+					}
+					print_icmp_reply(ip, icmp, icmplen, ts_diff);
+					info->list_ts[info->pcktrecv] = ts_diff;
 					info->pcktrecv++;
+					if (info->pcktrecv == info->list_max_items)
+					{
+						new_list = realloc(info->list_ts, info->list_max_items * 2 * sizeof(double));
+						if (new_list)
+							info->list_ts = new_list;
+						else
+							info->close = -1;
+						info->list_max_items *= 2;
+					}
 				}
 			}
-			else if (valid_type(icmp->icmp_type))
+			else if (valid_icmp_type(icmp->icmp_type))
 			{
 				if (*((uint16_t*)((uint8_t*)icmp + 8 + (ip->ip_hl * 4) + 4)) == info->pid)
 					print_icmp_error(ip, icmp, icmplen);

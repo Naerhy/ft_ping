@@ -16,7 +16,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
 
 $(NAME): $(OBJ)
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -lm
 
 $(OBJ_DIR):
 	mkdir -p $@

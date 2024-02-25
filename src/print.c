@@ -23,32 +23,11 @@ static char const* icmp_type_error(uint8_t type)
 		return "Parameter problem";
 }
 
-static double timestamp_diff(struct timeval* before)
-{
-	struct timeval now;
-	double ms;
-
-	// TODO: handle error
-	gettimeofday(&now, NULL);
-	ms = (((double)now.tv_sec * 1000) + ((double)now.tv_usec / 1000)) -
-			(((double)before->tv_sec * 1000) + ((double)before->tv_usec / 1000));
-	return ms;
-}
-
-static Timestamp convert_ts(double ms)
+void print_icmp_reply(struct ip* ip, struct icmp* icmp, uint16_t icmplen, double ts_diff)
 {
 	Timestamp ts;
 
-	ts.whole = (uint64_t)ms;
-	ts.fractional = (uint64_t)((ms - ts.whole) * 1000);
-	return ts;
-}
-
-void print_icmp_reply(struct ip* ip, struct icmp* icmp, uint16_t icmplen)
-{
-	Timestamp ts;
-
-	ts = convert_ts(timestamp_diff((struct timeval*)icmp->icmp_data));
+	ts = convert_ts(ts_diff);
 	printf("%u bytes from %s: icmp_seq=%u ttl=%u time=%lu,%lu ms\n", icmplen,
 			info->ipstr, icmp->icmp_seq, ip->ip_ttl, ts.whole, ts.fractional);
 }
@@ -78,11 +57,23 @@ void print_icmp_error(struct ip* ip, struct icmp* icmp, uint16_t icmplen)
 void print_stats(char const* hostname)
 {
 	uint32_t pcktloss;
+	Timestamp min;
+	Timestamp max;
+	Timestamp avg;
+	Timestamp stddev;
 
 	pcktloss = 100 - (((double)info->pcktrecv / (double)info->pcktsent) * 100);
 	printf("--- %s ping statistics ---\n", hostname);
 	printf("%u packets transmitted, %u packets received, %u%% packet loss\n", info->pcktsent,
 			info->pcktrecv, pcktloss);
-	// TODO: calculate those numbers
-	printf("round-trip min/avg/max/stddev = ...\n");
+	if (info->pcktrecv)
+	{
+		min = convert_ts(info->min_ts);
+		max = convert_ts(info->max_ts);
+		avg = convert_ts(info->avg_ts);
+		stddev = convert_ts(calc_stddev());
+		printf("round-trip min/avg/max/stddev = %lu,%lu/%lu,%lu/%lu,%lu/%lu,%03lu ms\n",
+				min.whole, min.fractional, avg.whole, avg.fractional,
+				max.whole, max.fractional, stddev.whole, stddev.fractional);
+	}
 }

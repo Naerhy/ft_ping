@@ -2,17 +2,6 @@
 
 Info* info = NULL;
 
-// TODO: check if useful to keep this function
-/*
-static uint32_t sw32(uint32_t v)
-{
-	return ((v << 24) & 0xFF000000)
-			| ((v << 8) & 0x00FF0000)
-			| ((v >> 8) & 0x0000FF00)
-			| ((v >> 24) & 0x000000FF);
-}
-*/
-
 static void handle_signals(int signum)
 {
 	if (signum == SIGALRM)
@@ -36,6 +25,8 @@ static int exit_ping(char const* err)
 			close(info->sockfd);
 		if (info->addrs)
 			freeaddrinfo(info->addrs);
+		if (info->list_ts)
+			free(info->list_ts);
 		free(info);
 	}
 	return err ? 1 : 0;
@@ -92,6 +83,10 @@ static int init_info(void)
 	info->close = 0;
 	info->pcktsent = 0;
 	info->pcktrecv = 0;
+	info->list_ts = malloc(sizeof(double) * LIST_SIZE_INIT);
+	if (!info->list_ts)
+		return 0;
+	info->list_max_items = LIST_SIZE_INIT;
 	return 1;
 }
 

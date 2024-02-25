@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <math.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>
@@ -18,6 +19,8 @@
 #define IP_HEADER_MIN_SIZE 20
 #define ICMP_MSG_SIZE 64
 #define ICMP_MIN_SIZE 16
+#define LIST_SIZE_INIT 512
+
 #define HELP (1 << 0)
 #define VERBOSE (1 << 1)
 
@@ -43,6 +46,11 @@ typedef struct Info
 	int close;
 	uint32_t pcktsent;
 	uint32_t pcktrecv;
+	double min_ts;
+	double max_ts;
+	double avg_ts;
+	double* list_ts;
+	uint64_t list_max_items;
 } Info;
 
 typedef struct Timestamp
@@ -58,8 +66,12 @@ void sendping(void);
 void recvping(void);
 
 void print_help(void);
-void print_icmp_reply(struct ip* ip, struct icmp* icmp, uint16_t icmplen);
+void print_icmp_reply(struct ip* ip, struct icmp* icmp, uint16_t icmplen, double ts_diff);
 void print_icmp_error(struct ip* ip, struct icmp* icmp, uint16_t icmplen);
 void print_stats(char const* hostname);
+
+double timestamp_diff(struct timeval* before);
+Timestamp convert_ts(double ms);
+double calc_stddev(void);
 
 #endif
