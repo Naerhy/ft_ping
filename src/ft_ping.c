@@ -7,7 +7,7 @@ static void handle_signals(int signum)
 	if (signum == SIGALRM)
 	{
 		sendping();
-		alarm(1);
+		alarm(info->interval);
 	}
 	else
 		info->close = 1;
@@ -52,7 +52,7 @@ static int init_socket(void)
 	return 1;
 }
 
-static void parse_args(int argc, char** argv)
+static int parse_args(int argc, char** argv)
 {
 	for (int i = 1; i < argc; i++)
 	{
@@ -60,12 +60,39 @@ static void parse_args(int argc, char** argv)
 			info->flags |= HELP;
 		else if (!strcmp(argv[i], "-v"))
 			info->flags |= VERBOSE;
+		else if (!strcmp(argv[i], "-c"))
+		{
+			if (!argv[i + 1])
+				return 0;
+			info->count = strtoul(argv[i + 1], NULL, 10);
+			if (!info->count)
+				return 0;
+			i++;
+		}
+		else if (!strcmp(argv[i], "-i"))
+		{
+			if (!argv[i + 1])
+				return 0;
+			info->interval = strtoul(argv[i + 1], NULL, 10);
+			if (!info->interval)
+				return 0;
+			i++;
+		}
+		else if (!strncmp(argv[i], "--ttl=", 6))
+		{
+			if (!strlen(argv[i] + 6))
+				return 0;
+			info->ttl = strtoul(argv[i] + 6, NULL, 10);
+			if (!info->ttl || info->ttl > 255)
+				return 0;
+		}
 		else
 		{
 			if (!info->host)
 				info->host = argv[i];
 		}
 	}
+	return 1;
 }
 
 static int init_info(void)
@@ -75,6 +102,8 @@ static int init_info(void)
 		return 0;
 	info->sockfd = -1;
 	info->flags = 0;
+	info->count = 0;
+	info->interval = 1;
 	info->ttl = 64;
 	info->host = NULL;
 	info->addrs = NULL;
@@ -96,7 +125,8 @@ int main(int argc, char** argv)
 
 	if (!init_info())
 		return exit_ping("ft_ping: unable to allocate memory\n");
-	parse_args(argc, argv);
+	if (!parse_args(argc, argv))
+		return exit_ping("ft_ping: invalid argument\n");
 	if (info->flags & HELP)
 		return exit_ping(NULL);
 	if (!info->host)

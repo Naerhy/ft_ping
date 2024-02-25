@@ -24,20 +24,13 @@
 #define HELP (1 << 0)
 #define VERBOSE (1 << 1)
 
-// TODO: args
-//   -? > display help
-//   -v > verbose output
-//   -c > send x packets then stop
-//   -i > interval between each send
-//   --ttl > set ttl
-//   -p > fill packet with given pattern
-//   -s > send packet of s size
-
 typedef struct Info
 {
 	int sockfd;
 	uint8_t flags;
-	uint8_t ttl;
+	uint64_t count;
+	uint32_t interval;
+	uint16_t ttl;
 	char* host;
 	struct addrinfo* addrs;
 	struct sockaddr_in* addr;

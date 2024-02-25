@@ -5,8 +5,11 @@ void print_help(void)
 	printf("Usage: ping [OPTION...] HOST\n");
 	printf("Send ICMP ECHO_REQUEST packets to network host.\n\n");
 	printf("Options:\n");
-	printf("  -v          verbose output\n");
-	printf("  -?          give this help list\n");
+	printf("  -c NUMBER		stop after sending NUMBER packets\n");
+	printf("  -i NUMBER		wait NUMBER seconds between sending each packet\n");
+	printf("  --ttl=N		specify N as time-to-live\n");
+	printf("  -v			verbose output\n");
+	printf("  -?			display this help list\n");
 }
 
 static char const* icmp_type_error(uint8_t type)

@@ -22,6 +22,8 @@ void sendping(void)
 
 	if (gettimeofday(&tv, NULL) == -1)
 		info->close = -1;
+	else if (info->count && info->pcktsent == info->count)
+		info->close = 1;
 	else
 	{
 		memset(msg, 0, ICMP_MSG_SIZE);
