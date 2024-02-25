@@ -1,5 +1,14 @@
 #include "ft_ping.h"
 
+void print_help(void)
+{
+	printf("Usage: ping [OPTION...] HOST\n");
+	printf("Send ICMP ECHO_REQUEST packets to network host.\n\n");
+	printf("Options:\n");
+	printf("  -v          verbose output\n");
+	printf("  -?          give this help list\n");
+}
+
 static char const* icmp_type_error(uint8_t type)
 {
 	if (type == ICMP_DEST_UNREACH)
@@ -58,8 +67,12 @@ void print_icmp_error(struct ip* ip, struct icmp* icmp, uint16_t icmplen)
 	src.sin_addr = ip->ip_src;
 	memset(src.sin_zero, 0, sizeof(src.sin_zero));
 	getnameinfo((struct sockaddr*)&src, sizeof(src), hostname, sizeof(hostname), NULL, 0, 0);
-	printf("%u bytes from %s (%s): %s\n", icmplen, hostname, ipstr,
-			icmp_type_error(icmp->icmp_type));
+	if (info->flags & VERBOSE)
+		printf("%u bytes from %s (%s): %s (type = %d, code = %d)\n", icmplen, hostname, ipstr,
+				icmp_type_error(icmp->icmp_type), icmp->icmp_type, icmp->icmp_code);
+	else
+		printf("%u bytes from %s (%s): %s\n", icmplen, hostname, ipstr,
+				icmp_type_error(icmp->icmp_type));
 }
 
 void print_stats(char const* hostname)
