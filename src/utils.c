@@ -5,7 +5,6 @@ double timestamp_diff(struct timeval* before)
 	struct timeval now;
 	double ms;
 
-	// TODO: handle error
 	gettimeofday(&now, NULL);
 	ms = (((double)now.tv_sec * 1000) + ((double)now.tv_usec / 1000)) -
 			(((double)before->tv_sec * 1000) + ((double)before->tv_usec / 1000));

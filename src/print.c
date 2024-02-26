@@ -35,7 +35,6 @@ void print_icmp_reply(struct ip* ip, struct icmp* icmp, uint16_t icmplen, double
 			info->ipstr, icmp->icmp_seq, ip->ip_ttl, ts.whole, ts.fractional);
 }
 
-// TODO: check if handle errors for getnameinfo and inet_ntop or not
 void print_icmp_error(struct ip* ip, struct icmp* icmp, uint16_t icmplen)
 {
 	struct sockaddr_in src;

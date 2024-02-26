@@ -6,8 +6,11 @@ static void handle_signals(int signum)
 {
 	if (signum == SIGALRM)
 	{
-		sendping();
-		alarm(info->interval);
+		if (!info->close)
+		{
+			sendping();
+			alarm(info->interval);
+		}
 	}
 	else
 		info->close = 1;
@@ -44,11 +47,12 @@ static int init_socket(void)
 	info->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (info->sockfd == -1)
 		return -2;
-	// TODO: handle ttl flag in argv + validate max value
 	if (setsockopt(info->sockfd, IPPROTO_IP, IP_TTL, &info->ttl, sizeof(info->ttl)) == -1)
 		return -3;
 	info->addr = (struct sockaddr_in*)info->addrs->ai_addr;
-	inet_ntop(info->addrs->ai_family, &info->addr->sin_addr, info->ipstr, sizeof(info->ipstr));
+	if (inet_ntop(info->addrs->ai_family, &info->addr->sin_addr, info->ipstr,
+			sizeof(info->ipstr)) == NULL)
+		return -1;
 	return 1;
 }
 
@@ -136,9 +140,9 @@ int main(int argc, char** argv)
 		return exit_ping(sockinit == -1 ? "ft_ping: unknown host\n"
 				: sockinit == -2 ? "ft_ping: unable to create socket\n"
 				: "ft_ping: unable to set socket option\n");
-	// TODO: remove 56 data bytes > dynamically set value
 	if (info->flags & VERBOSE)
-		printf("PING %s (%s): 56 data bytes, id %#x = %d\n", info->host, info->ipstr, info->pid, info->pid);
+		printf("PING %s (%s): 56 data bytes, id %#x = %d\n", info->host,
+				info->ipstr, info->pid, info->pid);
 	else
 		printf("PING %s (%s): 56 data bytes\n", info->host, info->ipstr);
 	signal(SIGALRM, handle_signals);
@@ -146,7 +150,7 @@ int main(int argc, char** argv)
 	raise(SIGALRM);
 	recvping();
 	if (info->close == -1)
-		return exit_ping("ft_ping: cannot send or recv ICMP message\n");
+		return exit_ping("ft_ping: unexpected error on sending or receiving ICMP message\n");
 	print_stats(argv[1]);
 	return exit_ping(NULL);
 }

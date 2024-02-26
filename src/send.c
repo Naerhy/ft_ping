@@ -12,13 +12,12 @@ static uint16_t generate_checksum(uint16_t* x)
 	return ~cksum;
 }
 
-// TODO: add info->close condition to prevent sending a last ping on exit?
-// TODO: verify that sendto return is 64 and decide what to do if error
 void sendping(void)
 {
 	struct icmp* icmp;
 	char msg[ICMP_MSG_SIZE];
 	struct timeval tv;
+	ssize_t nbsent;
 
 	if (gettimeofday(&tv, NULL) == -1)
 		info->close = -1;
@@ -35,8 +34,9 @@ void sendping(void)
 		icmp->icmp_seq = info->pcktsent;
 		memcpy(icmp->icmp_data, &tv, sizeof(tv));
 		icmp->icmp_cksum = generate_checksum((uint16_t*)icmp);
-		if (sendto(info->sockfd, msg, ICMP_MSG_SIZE, 0, (struct sockaddr*)info->addr,
-				sizeof(struct sockaddr_in)) == -1)
+		nbsent = sendto(info->sockfd, msg, ICMP_MSG_SIZE, 0, (struct sockaddr*)info->addr,
+				sizeof(struct sockaddr_in));
+		if (nbsent != 64)
 			info->close = -1;
 		info->pcktsent++;
 	}
